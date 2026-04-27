@@ -47,6 +47,7 @@ func _ready() -> void:
         sp.get_node("V/BuyHp").pressed.connect(_on_buy_hp)
         sp.get_node("V/BuyMp").pressed.connect(_on_buy_mp)
         sp.get_node("V/QuestBtn").pressed.connect(_on_quest_btn)
+        sp.get_node("V/WeaponBtn").pressed.connect(_on_weapon_btn)
         sp.get_node("V/Close").pressed.connect(close_shop)
     var q := get_node_or_null("/root/Quests")
     if q:
@@ -126,6 +127,8 @@ func _on_btn_potion_mp() -> void:
 
 func open_shop() -> void:
     shop_panel.visible = true
+    _refresh_weapon_btn()
+    _refresh_quest_label()
 
 func close_shop() -> void:
     shop_panel.visible = false
@@ -206,6 +209,36 @@ func _refresh_quest_label() -> void:
                 btn.text = "📜 «%s»: %d / %d" % [aq.name, q.active_progress, int(aq.target_count)]
             else:
                 btn.text = "📜 Получить новый квест"
+
+func _on_weapon_btn() -> void:
+    if player == null: return
+    if not player.can_upgrade_weapon():
+        _flash_toast("Уже мифрилл — лучше нет!")
+        return
+    var cost: int = player.next_weapon_cost()
+    if player.gold < cost:
+        _flash_toast("Не хватает %d 💰" % (cost - player.gold))
+        return
+    if player.upgrade_weapon():
+        var tier_name: String = String(player.WEAPON_TIERS[player.weapon_tier].name)
+        _flash_toast("Оружие улучшено: %s" % tier_name)
+        _refresh_weapon_btn()
+
+func _refresh_weapon_btn() -> void:
+    var sp := shop_panel
+    if sp == null or player == null: return
+    var btn: Button = sp.get_node("V/WeaponBtn") as Button
+    if btn == null: return
+    if not player.can_upgrade_weapon():
+        btn.text = "⚔ Оружие максимально (мифрилл)"
+        btn.disabled = true
+        return
+    var nxt: int = player.weapon_tier + 1
+    var tier_name: String = String(player.WEAPON_TIERS[nxt].name)
+    var bonus: int = int(player.WEAPON_TIERS[nxt].bonus) - int(player.WEAPON_TIERS[player.weapon_tier].bonus)
+    var cost: int = player.next_weapon_cost()
+    btn.text = "⚔ %s (+%d атк) — %d 💰" % [tier_name, bonus, cost]
+    btn.disabled = false
 
 func _flash_toast(msg: String) -> void:
     toast.text = msg

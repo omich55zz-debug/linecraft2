@@ -12,6 +12,10 @@ var data: Dictionary = {
     "gold": 0,
     "hp_potions": 0,
     "mp_potions": 0,
+    "weapon_tier": 0,
+    "quest_id": "",
+    "quest_progress": 0,
+    "quest_done": [],
 }
 
 func _ready() -> void:
@@ -45,5 +49,9 @@ func reset() -> void:
         "gold": 0,
         "hp_potions": 0,
         "mp_potions": 0,
+        "weapon_tier": 0,
+        "quest_id": "",
+        "quest_progress": 0,
+        "quest_done": [],
     }
     save_data()

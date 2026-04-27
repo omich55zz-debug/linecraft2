@@ -32,6 +32,7 @@ var m_atk: int = 4
 var gold: int = 0
 var hp_potions: int = 0
 var mp_potions: int = 0
+var weapon_tier: int = 0  # 0=base, 1=iron, 2=steel, 3=mythril
 var atk_cd: float = 0.0
 var gcd: float = 0.0
 var sitting: bool = false
@@ -61,6 +62,8 @@ func _ready() -> void:
         gold = int(sg.data.gold)
         hp_potions = int(sg.data.get("hp_potions", 0))
         mp_potions = int(sg.data.get("mp_potions", 0))
+        weapon_tier = int(sg.data.get("weapon_tier", 0))
+        atk += _weapon_tier_bonus()
         for i in range(1, level):
             max_hp += 20
             max_mp += 8
@@ -84,6 +87,8 @@ func _ready() -> void:
     character_visual.race_id = race_id
     character_visual.class_id = class_id
     add_child(character_visual)
+    if weapon_tier > 0:
+        _apply_weapon_visual()
 
     add_to_group("player")
     emit_signal("stats_changed")
@@ -305,7 +310,54 @@ func _save_progress() -> void:
     sg.data.gold = gold
     sg.data.hp_potions = hp_potions
     sg.data.mp_potions = mp_potions
+    sg.data.weapon_tier = weapon_tier
     sg.save_data()
+
+const WEAPON_TIERS := [
+    {"name": "Базовое", "bonus": 0, "cost": 0, "color": Color(0.78, 0.81, 0.85)},
+    {"name": "Железное", "bonus": 5, "cost": 200, "color": Color(0.62, 0.66, 0.74)},
+    {"name": "Стальное", "bonus": 12, "cost": 600, "color": Color(0.85, 0.88, 0.95)},
+    {"name": "Мифрилл", "bonus": 25, "cost": 1500, "color": Color(0.55, 0.85, 1.0)},
+]
+
+func _weapon_tier_bonus() -> int:
+    return int(WEAPON_TIERS[clamp(weapon_tier, 0, WEAPON_TIERS.size() - 1)].bonus)
+
+func can_upgrade_weapon() -> bool:
+    return weapon_tier < WEAPON_TIERS.size() - 1
+
+func next_weapon_cost() -> int:
+    if not can_upgrade_weapon(): return -1
+    return int(WEAPON_TIERS[weapon_tier + 1].cost)
+
+func upgrade_weapon() -> bool:
+    if not can_upgrade_weapon(): return false
+    var cost := next_weapon_cost()
+    if gold < cost: return false
+    var prev_bonus := _weapon_tier_bonus()
+    weapon_tier += 1
+    gold -= cost
+    var new_bonus := _weapon_tier_bonus()
+    atk += (new_bonus - prev_bonus)
+    _apply_weapon_visual()
+    emit_signal("floating_text", "+%d атаки!" % (new_bonus - prev_bonus), Color(0.5, 0.85, 1.0), global_position + Vector3(0, 2.4, 0))
+    emit_signal("stats_changed")
+    _save_progress()
+    return true
+
+func _apply_weapon_visual() -> void:
+    if character_visual == null or character_visual.weapon_node == null: return
+    var col: Color = WEAPON_TIERS[weapon_tier].color
+    for child in character_visual.weapon_node.get_children():
+        if child is MeshInstance3D and child.material_override is StandardMaterial3D:
+            var mat: StandardMaterial3D = child.material_override
+            if mat.albedo_color.r > 0.5 and mat.albedo_color.b > 0.5:
+                # only tint metal-ish parts (gray); skip wood/gold
+                mat.albedo_color = col
+                mat.emission_enabled = (weapon_tier >= 2)
+                if weapon_tier >= 2:
+                    mat.emission = col
+                    mat.emission_energy_multiplier = 0.5 if weapon_tier == 2 else 1.4
 
 func use_hp_potion() -> void:
     if hp_potions <= 0 or hp >= max_hp: return

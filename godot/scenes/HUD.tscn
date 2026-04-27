@@ -177,6 +177,10 @@ custom_minimum_size = Vector2(0, 48)
 text = "📜 Получить новый квест"
 custom_minimum_size = Vector2(0, 48)
 
+[node name="WeaponBtn" type="Button" parent="ShopPanel/V"]
+text = "⚔ Улучшить оружие"
+custom_minimum_size = Vector2(0, 48)
+
 [node name="Close" type="Button" parent="ShopPanel/V"]
 text = "Закрыть (Esc)"
 custom_minimum_size = Vector2(0, 36)
