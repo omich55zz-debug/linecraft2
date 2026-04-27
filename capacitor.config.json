@@ -1,0 +1,11 @@
+{
+  "appId": "ru.omich55zz.linecraft2",
+  "appName": "Linecraft 2",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "android": {
+    "buildOptions": {
+      "minSdkVersion": 23
+    }
+  }
+}

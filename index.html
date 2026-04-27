@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/sword.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0d0e14" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Linecraft 2</title>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene"></canvas>
+
+      <!-- Race / class selection -->
+      <div id="select-screen" class="overlay">
+        <div class="select-card">
+          <h1>Linecraft <span class="accent">II</span></h1>
+          <p class="muted">Выбери расу и класс</p>
+          <div id="race-list" class="race-list"></div>
+          <div id="class-list" class="class-list"></div>
+          <div class="row">
+            <label>Имя:&nbsp;<input id="hero-name" maxlength="16" placeholder="Авантюрист" /></label>
+          </div>
+          <button id="start-btn" class="btn primary big" disabled>В мир Аден</button>
+        </div>
+      </div>
+
+      <!-- Top HUD bars -->
+      <div id="hud" class="hud hidden">
+        <div class="top-left">
+          <div class="bar hp"><span></span><b id="hp-text">100/100</b></div>
+          <div class="bar mp"><span></span><b id="mp-text">100/100</b></div>
+          <div class="bar xp"><span></span><b id="xp-text">0%</b></div>
+          <div class="char-info">
+            <span id="char-name">Авантюрист</span>
+            <span id="char-meta">— ур. 1 —</span>
+          </div>
+        </div>
+
+        <!-- Target frame -->
+        <div id="target-frame" class="hidden">
+          <div class="tname"><span id="t-name">—</span> <span id="t-lvl"></span></div>
+          <div class="bar hp"><span id="t-hp-fill"></span><b id="t-hp-text">—</b></div>
+        </div>
+
+        <!-- Action bar -->
+        <div id="action-bar" class="action-bar">
+          <button class="slot" data-skill="attack" title="Атака (1)"><span class="icon">⚔</span><b>1</b></button>
+          <button class="slot" data-skill="power" title="Силовой удар (2)"><span class="icon">💥</span><b>2</b></button>
+          <button class="slot" data-skill="heal" title="Лечение (3)"><span class="icon">✚</span><b>3</b></button>
+          <button class="slot" data-skill="sit" title="Сесть/встать (R)"><span class="icon">🪑</span><b>R</b></button>
+        </div>
+
+        <!-- Right side: minimap, inventory toggle -->
+        <div class="top-right">
+          <button id="btn-inventory" class="icon-btn">🎒</button>
+          <button id="btn-character" class="icon-btn">👤</button>
+          <div id="minimap"></div>
+        </div>
+
+        <!-- Mobile controls -->
+        <div id="touch-stick" class="hidden">
+          <div class="stick-base"><div class="stick-knob"></div></div>
+        </div>
+      </div>
+
+      <!-- Level up toast / messages -->
+      <div id="toast-host" class="toast-host"></div>
+
+      <dialog id="modal-inventory" class="big-modal">
+        <h3>🎒 Инвентарь</h3>
+        <div id="inv-list" class="inv-list"></div>
+        <menu><button value="ok">Закрыть</button></menu>
+      </dialog>
+
+      <dialog id="modal-character" class="big-modal">
+        <h3>👤 Характеристики</h3>
+        <div id="char-stats"></div>
+        <menu><button value="ok">Закрыть</button></menu>
+      </dialog>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
