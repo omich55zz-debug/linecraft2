@@ -1,0 +1,73 @@
+name: Godot iOS Xcode Project
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  GODOT_VERSION: 4.4-stable
+  GODOT_BIN: Godot_v4.4-stable_macos.universal
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot + templates
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/Library/Application Support/Godot/export_templates
+          key: godot-mac-${{ env.GODOT_VERSION }}-v1
+
+      - name: Install Godot + export templates
+        run: |
+          set -e
+          mkdir -p ~/godot
+          if [ ! -x ~/godot/Godot.app/Contents/MacOS/Godot ]; then
+            curl -L -o /tmp/godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/${GODOT_BIN}.zip"
+            unzip -o /tmp/godot.zip -d ~/godot
+          fi
+          TPL_DIR="$HOME/Library/Application Support/Godot/export_templates/${GODOT_VERSION/-stable/.stable}"
+          mkdir -p "$TPL_DIR"
+          if [ ! -f "$TPL_DIR/ios.zip" ]; then
+            curl -L -o /tmp/templates.tpz "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_export_templates.tpz"
+            mkdir -p /tmp/godot_tpl
+            unzip -q /tmp/templates.tpz -d /tmp/godot_tpl
+            cp -R /tmp/godot_tpl/templates/* "$TPL_DIR/"
+          fi
+
+      - name: Build iOS Xcode project
+        run: |
+          set -e
+          mkdir -p godot/exports/ios
+          GODOT_BIN_PATH=~/godot/Godot.app/Contents/MacOS/Godot
+          "$GODOT_BIN_PATH" --headless --path godot --import || true
+          "$GODOT_BIN_PATH" --headless --path godot --export-release "iOS" exports/ios/linecraft2.xcodeproj
+
+      - name: Zip Xcode project
+        run: |
+          cd godot/exports/ios
+          zip -qr linecraft2-xcode.zip .
+
+      - name: Upload Xcode project artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linecraft2-ios-xcode
+          path: godot/exports/ios/linecraft2-xcode.zip
+
+      - name: Publish to Releases
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest dev build
+          files: godot/exports/ios/linecraft2-xcode.zip
+          prerelease: true
+          make_latest: false
