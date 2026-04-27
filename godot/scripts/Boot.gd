@@ -20,8 +20,28 @@ func _ready() -> void:
         var rid: String = race.id
         b.pressed.connect(func(): _select_race(rid))
         race_grid.add_child(b)
-    _select_race("human")
+    var sg := get_node_or_null("/root/SaveGame")
+    var initial_race := "human"
+    if sg and int(sg.data.level) > 1:
+        initial_race = String(sg.data.race_id)
+        sel_class = String(sg.data.class_id)
+    _select_race(initial_race)
+    if sg and int(sg.data.level) > 1:
+        sel_class = String(sg.data.class_id)
+        _select_class(sel_class)
+    if sg and int(sg.data.level) > 1:
+        start_btn.text = "▶ Продолжить (ур.%d, %d 💰)" % [int(sg.data.level), int(sg.data.gold)]
     start_btn.pressed.connect(_on_start)
+    var reset_btn := Button.new()
+    reset_btn.text = "↺ Сбросить прогресс"
+    reset_btn.custom_minimum_size = Vector2(0, 36)
+    reset_btn.pressed.connect(_on_reset)
+    start_btn.get_parent().add_child(reset_btn)
+
+func _on_reset() -> void:
+    var sg := get_node_or_null("/root/SaveGame")
+    if sg: sg.reset()
+    preview_label.text = "Прогресс сброшен. Выбери новую расу."
 
 func _select_race(id: String) -> void:
     sel_race = id

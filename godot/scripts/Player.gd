@@ -29,10 +29,12 @@ var hp: int = 80
 var mp: int = 20
 var atk: int = 12
 var m_atk: int = 4
+var gold: int = 0
 var atk_cd: float = 0.0
 var gcd: float = 0.0
 var sitting: bool = false
 var character_visual: Node3D
+var spawn_position: Vector3 = Vector3.ZERO
 
 func _ready() -> void:
     var sel := get_node_or_null("/root/Selection")
@@ -48,6 +50,20 @@ func _ready() -> void:
     mp = max_mp
     atk = klass.atk + int(race.stats.str * 0.2)
     m_atk = klass.m_atk + int(race.stats.int * 0.3)
+
+    var sg := get_node_or_null("/root/SaveGame")
+    if sg and sg.data.race_id == race_id and sg.data.class_id == class_id:
+        level = int(sg.data.level)
+        xp = int(sg.data.xp)
+        xp_next = int(sg.data.xp_next)
+        gold = int(sg.data.gold)
+        for i in range(1, level):
+            max_hp += 20
+            max_mp += 8
+            atk += 2
+        hp = max_hp
+        mp = max_mp
+    spawn_position = global_position
 
     collision_layer = 2
     collision_mask = 1
@@ -127,10 +143,14 @@ func _do_basic_attack() -> void:
     var dmg := atk + randi() % 5
     await get_tree().create_timer(0.20).timeout
     if is_instance_valid(t) and not t.dead:
+        _spawn_hit_burst(t.global_position + Vector3(0, 1.0, 0), Color(1, 0.78, 0.32))
         t.take_damage(dmg)
         emit_signal("floating_text", "-%d" % dmg, Color(1, 0.85, 0.4), t.global_position + Vector3(0, 1.6, 0))
         if t.dead:
             _gain_xp(t.kind.xp)
+            var loot: Array = t.kind.loot
+            var coins: int = randi_range(int(loot[0]), int(loot[1]))
+            add_gold(coins)
 
 func use_skill_power() -> void:
     if gcd > 0 or mp < 8 or target == null or not is_instance_valid(target) or target.dead:
@@ -142,9 +162,14 @@ func use_skill_power() -> void:
     var dmg := atk * 2 + randi() % 7
     await get_tree().create_timer(0.20).timeout
     if is_instance_valid(t) and not t.dead:
+        _spawn_hit_burst(t.global_position + Vector3(0, 1.0, 0), Color(1, 0.95, 0.45))
         t.take_damage(dmg)
         emit_signal("floating_text", "-%d ★" % dmg, Color(1, 0.95, 0.5), t.global_position + Vector3(0, 1.6, 0))
-        if t.dead: _gain_xp(t.kind.xp)
+        if t.dead:
+            _gain_xp(t.kind.xp)
+            var loot: Array = t.kind.loot
+            var coins: int = randi_range(int(loot[0]), int(loot[1]))
+            add_gold(coins)
     emit_signal("stats_changed")
 
 func use_skill_heal() -> void:
@@ -166,7 +191,48 @@ func take_damage(d: int) -> void:
     emit_signal("floating_text", "-%d" % d, Color(1, 0.55, 0.55), global_position + Vector3(0, 2.0, 0))
     emit_signal("stats_changed")
     if hp <= 0:
-        dead = true
+        _die()
+
+func _die() -> void:
+    dead = true
+    has_move_target = false
+    target = null
+    emit_signal("target_changed", null)
+    emit_signal("floating_text", "Вы пали!", Color(1, 0.4, 0.4), global_position + Vector3(0, 2.4, 0))
+    var tw := create_tween()
+    tw.tween_property(character_visual, "rotation:z", PI * 0.45, 0.5)
+    tw.tween_interval(2.0)
+    tw.tween_callback(_respawn)
+
+func _respawn() -> void:
+    dead = false
+    var penalty: int = int(xp * 0.1)
+    xp = max(0, xp - penalty)
+    hp = max_hp
+    mp = max_mp
+    global_position = spawn_position
+    if character_visual:
+        character_visual.rotation.z = 0
+    emit_signal("floating_text", "Воскрешение", Color(0.6, 1.0, 0.7), global_position + Vector3(0, 2.4, 0))
+    emit_signal("stats_changed")
+    _save_progress()
+
+func add_gold(amount: int) -> void:
+    gold += amount
+    emit_signal("floating_text", "+%d 💰" % amount, Color(1, 0.85, 0.3), global_position + Vector3(0, 2.4, 0))
+    emit_signal("stats_changed")
+    _save_progress()
+
+func _save_progress() -> void:
+    var sg := get_node_or_null("/root/SaveGame")
+    if sg == null: return
+    sg.data.race_id = race_id
+    sg.data.class_id = class_id
+    sg.data.level = level
+    sg.data.xp = xp
+    sg.data.xp_next = xp_next
+    sg.data.gold = gold
+    sg.save_data()
 
 func _gain_xp(amount: int) -> void:
     xp += amount
@@ -181,6 +247,34 @@ func _gain_xp(amount: int) -> void:
         mp = max_mp
         emit_signal("level_up", level)
     emit_signal("stats_changed")
+    _save_progress()
+
+func _spawn_hit_burst(pos: Vector3, color: Color) -> void:
+    var scene := get_tree().current_scene
+    if scene == null: return
+    for i in 8:
+        var spark := MeshInstance3D.new()
+        var sm := SphereMesh.new()
+        sm.radius = 0.08
+        sm.height = 0.16
+        spark.mesh = sm
+        var mat := StandardMaterial3D.new()
+        mat.albedo_color = color
+        mat.emission_enabled = true
+        mat.emission = color
+        mat.emission_energy_multiplier = 2.0
+        mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+        spark.material_override = mat
+        spark.position = pos
+        scene.add_child(spark)
+        var ang := randf() * TAU
+        var pitch_a := randf_range(0.2, 1.4)
+        var dist := randf_range(0.4, 1.1)
+        var dest := pos + Vector3(cos(ang) * dist, sin(pitch_a) * dist * 0.7, sin(ang) * dist)
+        var tw := scene.create_tween()
+        tw.tween_property(spark, "position", dest, 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+        tw.parallel().tween_property(mat, "albedo_color:a", 0.0, 0.45)
+        tw.tween_callback(spark.queue_free)
 
 func set_target(t: Node) -> void:
     target = t

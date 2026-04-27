@@ -15,6 +15,7 @@ boot_splash/show_image=false
 [autoload]
 
 Selection="*res://scripts/Selection.gd"
+SaveGame="*res://scripts/SaveGame.gd"
 
 [debug]
 

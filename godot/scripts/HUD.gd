@@ -11,6 +11,7 @@ var player: Node = null
 @onready var xp_bar: ProgressBar = $Top/Bars/XpBar
 @onready var xp_label: Label = $Top/Bars/XpBar/Label
 @onready var char_label: Label = $Top/CharLabel
+@onready var gold_label: Label = $Top/GoldLabel
 @onready var target_panel: PanelContainer = $TargetPanel
 @onready var target_name: Label = $TargetPanel/V/TargetName
 @onready var target_hp: ProgressBar = $TargetPanel/V/TargetHp
@@ -54,6 +55,7 @@ func _refresh() -> void:
     xp_bar.max_value = player.xp_next; xp_bar.value = player.xp
     xp_label.text = "XP %d / %d" % [player.xp, player.xp_next]
     char_label.text = "%s · %s · ур.%d %s" % [player.race.name, player.klass.name, player.level, ("(сидит)" if player.sitting else "")]
+    gold_label.text = "💰 %d" % player.gold
 
 func _on_target_changed(t) -> void:
     target_ref = t
