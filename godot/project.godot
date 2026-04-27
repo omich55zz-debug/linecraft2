@@ -16,6 +16,7 @@ boot_splash/show_image=false
 
 Selection="*res://scripts/Selection.gd"
 SaveGame="*res://scripts/SaveGame.gd"
+Quests="*res://scripts/Quests.gd"
 
 [debug]
 

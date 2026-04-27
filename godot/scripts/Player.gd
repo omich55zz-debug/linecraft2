@@ -155,6 +155,7 @@ func _do_basic_attack() -> void:
             var loot: Array = t.kind.loot
             var coins: int = randi_range(int(loot[0]), int(loot[1]))
             add_gold(coins)
+            _record_quest_kill(t.kind_id)
 
 func use_skill_power() -> void:
     if gcd > 0 or mp < 8 or target == null or not is_instance_valid(target) or target.dead:
@@ -174,7 +175,12 @@ func use_skill_power() -> void:
             var loot: Array = t.kind.loot
             var coins: int = randi_range(int(loot[0]), int(loot[1]))
             add_gold(coins)
+            _record_quest_kill(t.kind_id)
     emit_signal("stats_changed")
+
+func _record_quest_kill(kind_id: String) -> void:
+    var q := get_node_or_null("/root/Quests")
+    if q: q.record_kill(kind_id)
 
 func use_skill_heal() -> void:
     if gcd > 0 or mp < 12: return

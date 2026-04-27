@@ -18,6 +18,7 @@ var player: Node = null
 @onready var toast: Label = $Toast
 @onready var shop_panel: PanelContainer = $ShopPanel
 @onready var potions_label: Label = $Top/PotionsLabel
+@onready var quest_label: Label = $Top/QuestLabel
 
 var target_ref: Node = null
 
@@ -45,8 +46,13 @@ func _ready() -> void:
     if sp:
         sp.get_node("V/BuyHp").pressed.connect(_on_buy_hp)
         sp.get_node("V/BuyMp").pressed.connect(_on_buy_mp)
+        sp.get_node("V/QuestBtn").pressed.connect(_on_quest_btn)
         sp.get_node("V/Close").pressed.connect(close_shop)
+    var q := get_node_or_null("/root/Quests")
+    if q:
+        q.quest_updated.connect(_on_quest_changed)
     _refresh()
+    _refresh_quest_label()
 
 const HP_POT_COST := 25
 const MP_POT_COST := 35
@@ -151,3 +157,59 @@ func _on_buy_mp() -> void:
     player.mp_potions += 1
     player.emit_signal("stats_changed")
     player._save_progress()
+
+func _on_quest_btn() -> void:
+    var q := get_node_or_null("/root/Quests")
+    if q == null or player == null: return
+    if q.is_completable():
+        var done: Dictionary = q.turn_in()
+        if not done.is_empty():
+            player._gain_xp(int(done.reward_xp))
+            player.add_gold(int(done.reward_gold))
+            _flash_toast("Квест выполнен! +%d 💰 +%d XP" % [int(done.reward_gold), int(done.reward_xp)])
+        _refresh_quest_label()
+    elif q.has_active():
+        var aq: Dictionary = q.active_quest()
+        _flash_toast("Прогресс: %d / %d" % [q.active_progress, int(aq.target_count)])
+    else:
+        var qid: String = q.next_offerable()
+        if qid == "":
+            _flash_toast("Все квесты выполнены — герой!")
+        else:
+            q.accept(qid)
+            var aq2: Dictionary = q.active_quest()
+            _flash_toast("Принят квест: %s" % aq2.name)
+        _refresh_quest_label()
+
+func _on_quest_changed(_qid) -> void:
+    _refresh_quest_label()
+
+func _refresh_quest_label() -> void:
+    var q := get_node_or_null("/root/Quests")
+    if q == null:
+        quest_label.text = ""
+        return
+    if not q.has_active():
+        quest_label.text = "📜 Зайди к торговцу — есть квест"
+        return
+    var aq: Dictionary = q.active_quest()
+    quest_label.text = "📜 %s — %d / %d" % [aq.name, q.active_progress, int(aq.target_count)]
+    if q.is_completable():
+        quest_label.text += "  ✅"
+    var sp := shop_panel
+    if sp:
+        var btn: Button = sp.get_node("V/QuestBtn") as Button
+        if btn:
+            if q.is_completable():
+                btn.text = "✅ Сдать «%s» (+%d 💰 / +%d XP)" % [aq.name, int(aq.reward_gold), int(aq.reward_xp)]
+            elif q.has_active():
+                btn.text = "📜 «%s»: %d / %d" % [aq.name, q.active_progress, int(aq.target_count)]
+            else:
+                btn.text = "📜 Получить новый квест"
+
+func _flash_toast(msg: String) -> void:
+    toast.text = msg
+    toast.visible = true
+    var tw := create_tween()
+    tw.tween_interval(2.0)
+    tw.tween_callback(func(): toast.visible = false)

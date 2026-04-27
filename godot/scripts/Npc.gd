@@ -80,3 +80,17 @@ func _build_label() -> void:
     name_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
     name_label.no_depth_test = true
     add_child(name_label)
+
+func _process(_delta: float) -> void:
+    var q := get_node_or_null("/root/Quests")
+    if q == null: return
+    var prefix := ""
+    if q.is_completable():
+        prefix = "❓ "
+        name_label.modulate = Color(0.55, 1.0, 0.55)
+    elif not q.has_active() and q.next_offerable() != "":
+        prefix = "❗ "
+        name_label.modulate = Color(1, 0.92, 0.32)
+    else:
+        name_label.modulate = Color(1, 0.9, 0.5)
+    name_label.text = "%s%s ✦" % [prefix, npc_name]

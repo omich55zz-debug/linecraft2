@@ -3,11 +3,11 @@ extends Camera3D
 
 @export var target_path: NodePath
 var target: Node3D
-var distance: float = 12.0
+var distance: float = 14.0
 var min_dist: float = 4.0
 var max_dist: float = 30.0
 var yaw: float = PI * 0.25
-var pitch: float = 0.85
+var pitch: float = 1.0
 var min_pitch: float = 0.25
 var max_pitch: float = 1.4
 var dragging: bool = false
