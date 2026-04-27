@@ -191,8 +191,11 @@ func _process(delta: float) -> void:
     if Input.is_action_just_pressed("deselect"):
         player.clear_target()
         var hud := get_node_or_null("HUD")
-        if hud and hud.has_method("close_shop"):
-            hud.close_shop()
+        if hud:
+            if hud.has_method("close_craft"):
+                hud.close_craft()
+            if hud.has_method("close_shop"):
+                hud.close_shop()
     if Input.is_key_pressed(KEY_4) and not _key4_held:
         player.use_hp_potion()
         _key4_held = true

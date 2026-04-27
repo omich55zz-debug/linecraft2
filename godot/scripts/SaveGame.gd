@@ -16,6 +16,8 @@ var data: Dictionary = {
     "quest_id": "",
     "quest_progress": 0,
     "quest_done": [],
+    "materials": {},
+    "crafted_items": [],
 }
 
 func _ready() -> void:
@@ -53,5 +55,12 @@ func reset() -> void:
         "quest_id": "",
         "quest_progress": 0,
         "quest_done": [],
+        "materials": {},
+        "crafted_items": [],
     }
     save_data()
+    var inv := get_node_or_null("/root/Inventory")
+    if inv:
+        inv.materials = {}
+        inv.crafted_items = []
+        inv.emit_signal("changed")

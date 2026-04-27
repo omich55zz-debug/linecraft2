@@ -90,8 +90,24 @@ func _ready() -> void:
     if weapon_tier > 0:
         _apply_weapon_visual()
 
+    _apply_crafted_bonuses()
+    hp = max_hp
+    mp = max_mp
+
     add_to_group("player")
     emit_signal("stats_changed")
+
+func _apply_crafted_bonuses() -> void:
+    var inv := get_node_or_null("/root/Inventory")
+    if inv == null: return
+    for rid in inv.crafted_items:
+        var r: Dictionary = Data.recipe(String(rid))
+        if r.is_empty(): continue
+        var bonus: Dictionary = r.bonus
+        max_hp += int(bonus.get("max_hp", 0))
+        max_mp += int(bonus.get("max_mp", 0))
+        atk += int(bonus.get("atk", 0))
+        m_atk += int(bonus.get("m_atk", 0))
 
 func _physics_process(delta: float) -> void:
     if dead: return
@@ -160,6 +176,7 @@ func _do_basic_attack() -> void:
             var loot: Array = t.kind.loot
             var coins: int = randi_range(int(loot[0]), int(loot[1]))
             _drop_coin_pile(t.global_position, coins)
+            _drop_materials(t.global_position, t.kind)
             _record_quest_kill(t.kind_id)
 
 func use_skill_power() -> void:
@@ -181,6 +198,7 @@ func use_skill_power() -> void:
             var loot: Array = t.kind.loot
             var coins: int = randi_range(int(loot[0]), int(loot[1]))
             _drop_coin_pile(t.global_position, coins)
+            _drop_materials(t.global_position, t.kind)
             _record_quest_kill(t.kind_id)
     emit_signal("stats_changed")
 
@@ -194,6 +212,24 @@ func _drop_coin_pile(pos: Vector3, amount: int) -> void:
     pile.amount = amount
     pile.position = Vector3(pos.x, 0.0, pos.z)
     scene.add_child(pile)
+
+func _drop_materials(pos: Vector3, kind: Dictionary) -> void:
+    var scene := get_tree().current_scene
+    if scene == null: return
+    var drops: Variant = kind.get("drops", [])
+    if not drops is Array: return
+    var idx := 0
+    for d in drops:
+        if not d is Dictionary: continue
+        var chance: float = float(d.get("chance", 0.0))
+        if randf() <= chance:
+            var drop := preload("res://scripts/MaterialDrop.gd").new()
+            drop.mat_id = String(d.mat)
+            drop.qty = 1
+            var ang := float(idx) * 0.9
+            drop.position = Vector3(pos.x + cos(ang) * 0.6, 0.0, pos.z + sin(ang) * 0.6)
+            scene.add_child(drop)
+        idx += 1
 
 func _record_quest_kill(kind_id: String) -> void:
     var q := get_node_or_null("/root/Quests")

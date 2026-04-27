@@ -17,8 +17,12 @@ var player: Node = null
 @onready var target_hp: ProgressBar = $TargetPanel/V/TargetHp
 @onready var toast: Label = $Toast
 @onready var shop_panel: PanelContainer = $ShopPanel
+@onready var craft_panel: PanelContainer = $CraftPanel
 @onready var potions_label: Label = $Top/PotionsLabel
 @onready var quest_label: Label = $Top/QuestLabel
+@onready var materials_label: Label = $Top/MaterialsLabel
+
+const Data := preload("res://scripts/Data.gd")
 
 var target_ref: Node = null
 
@@ -48,12 +52,20 @@ func _ready() -> void:
         sp.get_node("V/BuyMp").pressed.connect(_on_buy_mp)
         sp.get_node("V/QuestBtn").pressed.connect(_on_quest_btn)
         sp.get_node("V/WeaponBtn").pressed.connect(_on_weapon_btn)
+        sp.get_node("V/CraftBtn").pressed.connect(_on_craft_btn)
         sp.get_node("V/Close").pressed.connect(close_shop)
+    if craft_panel:
+        craft_panel.visible = false
+        craft_panel.get_node("V/CloseCraft").pressed.connect(close_craft)
     var q := get_node_or_null("/root/Quests")
     if q:
         q.quest_updated.connect(_on_quest_changed)
+    var inv := get_node_or_null("/root/Inventory")
+    if inv:
+        inv.changed.connect(_refresh_materials)
     _refresh()
     _refresh_quest_label()
+    _refresh_materials()
 
 const HP_POT_COST := 25
 const MP_POT_COST := 35
@@ -239,6 +251,95 @@ func _refresh_weapon_btn() -> void:
     var cost: int = player.next_weapon_cost()
     btn.text = "⚔ %s (+%d атк) — %d 💰" % [tier_name, bonus, cost]
     btn.disabled = false
+
+func _on_craft_btn() -> void:
+    open_craft()
+
+func open_craft() -> void:
+    if craft_panel == null: return
+    shop_panel.visible = false
+    craft_panel.visible = true
+    _rebuild_recipes()
+
+func close_craft() -> void:
+    if craft_panel:
+        craft_panel.visible = false
+
+func _rebuild_recipes() -> void:
+    if craft_panel == null or player == null: return
+    var inv := get_node_or_null("/root/Inventory")
+    if inv == null: return
+    var recipes_box: VBoxContainer = craft_panel.get_node("V/Recipes")
+    for child in recipes_box.get_children():
+        child.queue_free()
+    for r in Data.RECIPES:
+        var btn := Button.new()
+        btn.custom_minimum_size = Vector2(0, 56)
+        btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+        btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        var owned: bool = inv.has_owned(String(r.id))
+        var lines: Array[String] = []
+        lines.append("%s %s — %s" % [String(r.icon), String(r.name), String(r.desc)])
+        var cost_parts: Array[String] = []
+        for mat_id in r.cost.keys():
+            var info: Dictionary = Data.material(String(mat_id))
+            if info.is_empty(): continue
+            var have: int = inv.count(String(mat_id))
+            var need: int = int(r.cost[mat_id])
+            cost_parts.append("%s%d/%d" % [String(info.icon), have, need])
+        cost_parts.append("💰 %d/%d" % [int(player.gold), int(r.gold)])
+        lines.append("  ".join(cost_parts))
+        btn.text = "\n".join(lines)
+        if owned:
+            btn.text = "✅ %s — собрано" % String(r.name)
+            btn.disabled = true
+        else:
+            var ok: bool = inv.can_craft(r, int(player.gold))
+            btn.disabled = not ok
+        var rid := String(r.id)
+        btn.pressed.connect(func(): _try_craft(rid))
+        recipes_box.add_child(btn)
+
+func _try_craft(rid: String) -> void:
+    var inv := get_node_or_null("/root/Inventory")
+    if inv == null or player == null: return
+    var r: Dictionary = Data.recipe(rid)
+    if r.is_empty(): return
+    if inv.has_owned(rid):
+        _flash_toast("Уже собрано")
+        return
+    if not inv.can_craft(r, int(player.gold)):
+        _flash_toast("Не хватает материалов или золота")
+        return
+    if inv.craft(r):
+        player.gold -= int(r.gold)
+        var bonus: Dictionary = r.bonus
+        var hp_b: int = int(bonus.get("max_hp", 0))
+        var mp_b: int = int(bonus.get("max_mp", 0))
+        player.max_hp += hp_b
+        player.max_mp += mp_b
+        player.atk += int(bonus.get("atk", 0))
+        player.m_atk += int(bonus.get("m_atk", 0))
+        if hp_b > 0: player.hp += hp_b
+        if mp_b > 0: player.mp += mp_b
+        player.emit_signal("stats_changed")
+        player._save_progress()
+        _flash_toast("✨ Собрано: %s" % String(r.name))
+        _rebuild_recipes()
+
+func _refresh_materials() -> void:
+    var inv := get_node_or_null("/root/Inventory")
+    if inv == null:
+        materials_label.text = "📦 Пусто"
+        return
+    materials_label.text = inv.materials_text()
+    if craft_panel and craft_panel.visible:
+        _rebuild_recipes()
+
+func flash_material_pickup(mat_id: String, qty: int) -> void:
+    var info: Dictionary = Data.material(mat_id)
+    if info.is_empty(): return
+    _flash_toast("%s +%d %s" % [String(info.icon), qty, String(info.name)])
 
 func _flash_toast(msg: String) -> void:
     toast.text = msg

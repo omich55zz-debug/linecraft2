@@ -40,6 +40,13 @@ theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 5
 autowrap_mode = 2
 
+[node name="MaterialsLabel" type="Label" parent="Top"]
+text = "📦 Пусто"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.85, 1.0, 0.85, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 5
+
 [node name="Bars" type="VBoxContainer" parent="Top"]
 
 [node name="HpBar" type="ProgressBar" parent="Top/Bars"]
@@ -181,7 +188,40 @@ custom_minimum_size = Vector2(0, 48)
 text = "⚔ Улучшить оружие"
 custom_minimum_size = Vector2(0, 48)
 
+[node name="CraftBtn" type="Button" parent="ShopPanel/V"]
+text = "🛠 Открыть крафт"
+custom_minimum_size = Vector2(0, 48)
+
 [node name="Close" type="Button" parent="ShopPanel/V"]
+text = "Закрыть (Esc)"
+custom_minimum_size = Vector2(0, 36)
+
+[node name="CraftPanel" type="PanelContainer" parent="."]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -260.0
+offset_top = -240.0
+offset_right = 260.0
+offset_bottom = 240.0
+visible = false
+
+[node name="V" type="VBoxContainer" parent="CraftPanel"]
+
+[node name="Title" type="Label" parent="CraftPanel/V"]
+text = "🛠 Крафт у Альтрана"
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 1
+
+[node name="Hint" type="Label" parent="CraftPanel/V"]
+text = "Каждый предмет можно собрать один раз — даёт постоянный бонус."
+autowrap_mode = 2
+
+[node name="Recipes" type="VBoxContainer" parent="CraftPanel/V"]
+theme_override_constants/separation = 6
+
+[node name="CloseCraft" type="Button" parent="CraftPanel/V"]
 text = "Закрыть (Esc)"
 custom_minimum_size = Vector2(0, 36)
 
