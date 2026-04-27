@@ -40,6 +40,82 @@ func _spawn_npcs() -> void:
     npc.name = "Trader"
     npc.position = Vector3(3.5, 0, -2.5)
     add_child(npc)
+    _build_camp(Vector3(3.5, 0, -2.5))
+
+func _build_camp(center: Vector3) -> void:
+    # campfire — stone ring + 3 logs + glowing sphere + flickering OmniLight3D
+    var ring := MeshInstance3D.new()
+    var rm := TorusMesh.new()
+    rm.inner_radius = 0.70
+    rm.outer_radius = 1.05
+    ring.mesh = rm
+    var stone_mat := StandardMaterial3D.new()
+    stone_mat.albedo_color = Color(0.4, 0.4, 0.42)
+    stone_mat.roughness = 0.95
+    ring.material_override = stone_mat
+    ring.position = center + Vector3(2.2, 0.05, 1.4)
+    add_child(ring)
+
+    for i in 3:
+        var log_m := MeshInstance3D.new()
+        var cm := CylinderMesh.new()
+        cm.top_radius = 0.10
+        cm.bottom_radius = 0.10
+        cm.height = 0.95
+        log_m.mesh = cm
+        var wood := StandardMaterial3D.new()
+        wood.albedo_color = Color(0.32, 0.20, 0.12)
+        log_m.material_override = wood
+        log_m.position = ring.position + Vector3(0, 0.20, 0)
+        log_m.rotation.x = PI * 0.5
+        log_m.rotation.y = i * (TAU / 3.0)
+        add_child(log_m)
+
+    var fire := MeshInstance3D.new()
+    var fm := SphereMesh.new()
+    fm.radius = 0.32
+    fm.height = 0.55
+    fire.mesh = fm
+    var fmat := StandardMaterial3D.new()
+    fmat.albedo_color = Color(1.0, 0.55, 0.18)
+    fmat.emission_enabled = true
+    fmat.emission = Color(1.0, 0.5, 0.16)
+    fmat.emission_energy_multiplier = 2.5
+    fire.material_override = fmat
+    fire.position = ring.position + Vector3(0, 0.45, 0)
+    add_child(fire)
+
+    var light := OmniLight3D.new()
+    light.light_color = Color(1.0, 0.6, 0.3)
+    light.light_energy = 1.6
+    light.omni_range = 8.0
+    light.position = ring.position + Vector3(0, 1.0, 0)
+    add_child(light)
+
+    var tw := create_tween().set_loops()
+    tw.tween_property(fire, "scale", Vector3(1.1, 1.15, 1.1), 0.4).set_trans(Tween.TRANS_SINE)
+    tw.tween_property(fire, "scale", Vector3.ONE, 0.4).set_trans(Tween.TRANS_SINE)
+
+    # small wooden hut
+    var hut := MeshInstance3D.new()
+    var bm := BoxMesh.new()
+    bm.size = Vector3(3.4, 2.4, 2.6)
+    hut.mesh = bm
+    var hmat := StandardMaterial3D.new()
+    hmat.albedo_color = Color(0.42, 0.27, 0.16)
+    hut.material_override = hmat
+    hut.position = center + Vector3(-2.4, 1.2, -1.2)
+    add_child(hut)
+
+    var roof := MeshInstance3D.new()
+    var pm := PrismMesh.new()
+    pm.size = Vector3(3.8, 1.2, 2.9)
+    roof.mesh = pm
+    var rmat := StandardMaterial3D.new()
+    rmat.albedo_color = Color(0.28, 0.16, 0.10)
+    roof.material_override = rmat
+    roof.position = hut.position + Vector3(0, 1.8, 0)
+    add_child(roof)
 
 func _build_hud() -> void:
     var hud_scene := load("res://scenes/HUD.tscn")
@@ -127,9 +203,30 @@ func _process(delta: float) -> void:
         _key5_held = true
     elif not Input.is_key_pressed(KEY_5):
         _key5_held = false
+    if Input.is_key_pressed(KEY_T) and not _keyT_held:
+        _try_town_portal()
+        _keyT_held = true
+    elif not Input.is_key_pressed(KEY_T):
+        _keyT_held = false
 
 var _key4_held := false
 var _key5_held := false
+var _keyT_held := false
+
+func _try_town_portal() -> void:
+    if player.gold < 10:
+        var hud := get_node_or_null("HUD")
+        if hud and hud.has_method("_flash_toast"):
+            hud._flash_toast("Не хватает золота на портал (10 💰)")
+        return
+    player.gold -= 10
+    player.global_position = player.spawn_position
+    player.has_move_target = false
+    player.emit_signal("stats_changed")
+    player._save_progress()
+    var hud2 := get_node_or_null("HUD")
+    if hud2 and hud2.has_method("_flash_toast"):
+        hud2._flash_toast("Городской портал ✨")
 
 func _unhandled_input(event: InputEvent) -> void:
     if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:

@@ -154,7 +154,7 @@ func _do_basic_attack() -> void:
             _gain_xp(t.kind.xp)
             var loot: Array = t.kind.loot
             var coins: int = randi_range(int(loot[0]), int(loot[1]))
-            add_gold(coins)
+            _drop_coin_pile(t.global_position, coins)
             _record_quest_kill(t.kind_id)
 
 func use_skill_power() -> void:
@@ -174,9 +174,20 @@ func use_skill_power() -> void:
             _gain_xp(t.kind.xp)
             var loot: Array = t.kind.loot
             var coins: int = randi_range(int(loot[0]), int(loot[1]))
-            add_gold(coins)
+            _drop_coin_pile(t.global_position, coins)
             _record_quest_kill(t.kind_id)
     emit_signal("stats_changed")
+
+func _drop_coin_pile(pos: Vector3, amount: int) -> void:
+    if amount <= 0: return
+    var scene := get_tree().current_scene
+    if scene == null:
+        add_gold(amount)
+        return
+    var pile := preload("res://scripts/CoinPile.gd").new()
+    pile.amount = amount
+    pile.position = Vector3(pos.x, 0.0, pos.z)
+    scene.add_child(pile)
 
 func _record_quest_kill(kind_id: String) -> void:
     var q := get_node_or_null("/root/Quests")
