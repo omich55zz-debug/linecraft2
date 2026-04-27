@@ -18,6 +18,7 @@ var player: Node = null
 @onready var toast: Label = $Toast
 @onready var shop_panel: PanelContainer = $ShopPanel
 @onready var craft_panel: PanelContainer = $CraftPanel
+@onready var sell_panel: PanelContainer = $SellPanel
 @onready var potions_label: Label = $Top/PotionsLabel
 @onready var quest_label: Label = $Top/QuestLabel
 @onready var materials_label: Label = $Top/MaterialsLabel
@@ -46,6 +47,7 @@ func _ready() -> void:
         ab.get_node("BtnSit").pressed.connect(_on_btn_sit_pressed)
         ab.get_node("BtnPotionHp").pressed.connect(_on_btn_potion_hp)
         ab.get_node("BtnPotionMp").pressed.connect(_on_btn_potion_mp)
+        ab.get_node("BtnAoe").pressed.connect(_on_btn_aoe_pressed)
     var sp := shop_panel
     if sp:
         sp.get_node("V/BuyHp").pressed.connect(_on_buy_hp)
@@ -53,10 +55,14 @@ func _ready() -> void:
         sp.get_node("V/QuestBtn").pressed.connect(_on_quest_btn)
         sp.get_node("V/WeaponBtn").pressed.connect(_on_weapon_btn)
         sp.get_node("V/CraftBtn").pressed.connect(_on_craft_btn)
+        sp.get_node("V/SellBtn").pressed.connect(_on_sell_btn)
         sp.get_node("V/Close").pressed.connect(close_shop)
     if craft_panel:
         craft_panel.visible = false
         craft_panel.get_node("V/CloseCraft").pressed.connect(close_craft)
+    if sell_panel:
+        sell_panel.visible = false
+        sell_panel.get_node("V/CloseSell").pressed.connect(close_sell)
     var q := get_node_or_null("/root/Quests")
     if q:
         q.quest_updated.connect(_on_quest_changed)
@@ -132,6 +138,8 @@ func _on_btn_heal_pressed() -> void:
     if player: player.use_skill_heal()
 func _on_btn_sit_pressed() -> void:
     if player: player.toggle_sit()
+func _on_btn_aoe_pressed() -> void:
+    if player: player.use_skill_aoe()
 func _on_btn_potion_hp() -> void:
     if player: player.use_hp_potion()
 func _on_btn_potion_mp() -> void:
@@ -264,6 +272,90 @@ func open_craft() -> void:
 func close_craft() -> void:
     if craft_panel:
         craft_panel.visible = false
+
+const SELL_COMMON := 8
+const SELL_RARE := 18
+const RARE_MATS := ["bear_claw", "orc_horn", "iron_scrap", "gnoll_bone"]
+
+func _on_sell_btn() -> void:
+    open_sell()
+
+func open_sell() -> void:
+    if sell_panel == null: return
+    shop_panel.visible = false
+    sell_panel.visible = true
+    _rebuild_sell()
+
+func close_sell() -> void:
+    if sell_panel:
+        sell_panel.visible = false
+
+func _sell_price(mat_id: String) -> int:
+    return SELL_RARE if mat_id in RARE_MATS else SELL_COMMON
+
+func _rebuild_sell() -> void:
+    if sell_panel == null: return
+    var inv := get_node_or_null("/root/Inventory")
+    if inv == null or player == null: return
+    var box: VBoxContainer = sell_panel.get_node("V/Mats")
+    for child in box.get_children():
+        child.queue_free()
+    var any: bool = false
+    for mat_id in Data.MATERIALS.keys():
+        var have: int = inv.count(String(mat_id))
+        if have <= 0: continue
+        any = true
+        var info: Dictionary = Data.MATERIALS[mat_id]
+        var price: int = _sell_price(String(mat_id))
+        var row := HBoxContainer.new()
+        row.add_theme_constant_override("separation", 8)
+        row.custom_minimum_size = Vector2(0, 44)
+        var lbl := Label.new()
+        lbl.text = "%s %s ×%d  (по %d💰)" % [String(info.icon), String(info.name), have, price]
+        lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        row.add_child(lbl)
+        var b1 := Button.new()
+        b1.text = "Продать 1"
+        b1.custom_minimum_size = Vector2(110, 0)
+        var mid := String(mat_id)
+        b1.pressed.connect(func(): _sell_one(mid))
+        row.add_child(b1)
+        var ball := Button.new()
+        ball.text = "Продать всё (+%d💰)" % (price * have)
+        ball.custom_minimum_size = Vector2(170, 0)
+        ball.pressed.connect(func(): _sell_all(mid))
+        row.add_child(ball)
+        box.add_child(row)
+    if not any:
+        var empty := Label.new()
+        empty.text = "📦 Материалов нет — пойди убей кого-нибудь."
+        empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        box.add_child(empty)
+
+func _sell_one(mat_id: String) -> void:
+    _sell_qty(mat_id, 1)
+
+func _sell_all(mat_id: String) -> void:
+    var inv := get_node_or_null("/root/Inventory")
+    if inv == null: return
+    _sell_qty(mat_id, inv.count(mat_id))
+
+func _sell_qty(mat_id: String, qty: int) -> void:
+    if qty <= 0: return
+    var inv := get_node_or_null("/root/Inventory")
+    if inv == null or player == null: return
+    var have: int = inv.count(mat_id)
+    qty = min(qty, have)
+    if qty <= 0: return
+    inv.materials[mat_id] = have - qty
+    if inv.materials[mat_id] <= 0:
+        inv.materials.erase(mat_id)
+    inv._save()
+    inv.emit_signal("changed")
+    var price: int = _sell_price(mat_id) * qty
+    player.add_gold(price)
+    _flash_toast("+%d 💰" % price)
+    _rebuild_sell()
 
 func _rebuild_recipes() -> void:
     if craft_panel == null or player == null: return

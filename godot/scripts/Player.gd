@@ -297,6 +297,55 @@ func toggle_sit() -> void:
     sitting = not sitting
     emit_signal("stats_changed")
 
+func use_skill_aoe() -> void:
+    if gcd > 0 or mp < 15: return
+    mp -= 15
+    gcd = 1.4
+    _spawn_aoe_burst()
+    var radius := 4.5
+    var dmg_per_target: int = max(1, int(round(atk * 0.85)))
+    var hit := 0
+    for m in get_tree().get_nodes_in_group("monsters"):
+        if not is_instance_valid(m) or m.dead: continue
+        var d: float = global_position.distance_to(m.global_position)
+        if d <= radius:
+            _spawn_hit_burst(m.global_position + Vector3(0, 1.0, 0), Color(1, 0.5, 0.85))
+            m.take_damage(dmg_per_target)
+            emit_signal("floating_text", "-%d 💥" % dmg_per_target, Color(1, 0.5, 0.85), m.global_position + Vector3(0, 1.6, 0))
+            if m.target == null:
+                m.target = self
+            if m.dead:
+                _gain_xp(m.kind.xp)
+                var loot: Array = m.kind.loot
+                var coins: int = randi_range(int(loot[0]), int(loot[1]))
+                _drop_coin_pile(m.global_position, coins)
+                _drop_materials(m.global_position, m.kind)
+                _record_quest_kill(m.kind_id)
+            hit += 1
+    if hit == 0:
+        emit_signal("floating_text", "Никого рядом", Color(0.7, 0.7, 0.7), global_position + Vector3(0, 2.0, 0))
+    emit_signal("stats_changed")
+
+func _spawn_aoe_burst() -> void:
+    var ring := MeshInstance3D.new()
+    var tm := TorusMesh.new()
+    tm.inner_radius = 0.4
+    tm.outer_radius = 0.55
+    ring.mesh = tm
+    var mat := StandardMaterial3D.new()
+    mat.albedo_color = Color(1.0, 0.55, 0.95, 0.85)
+    mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+    mat.emission_enabled = true
+    mat.emission = Color(1.0, 0.5, 0.95)
+    mat.emission_energy_multiplier = 2.5
+    ring.material_override = mat
+    ring.position = Vector3(0, 0.1, 0)
+    add_child(ring)
+    var tw := create_tween()
+    tw.tween_property(ring, "scale", Vector3(9, 1, 9), 0.45).set_trans(Tween.TRANS_QUAD)
+    tw.parallel().tween_property(mat, "albedo_color:a", 0.0, 0.45)
+    tw.tween_callback(ring.queue_free)
+
 func take_damage(d: int) -> void:
     if dead: return
     hp = max(0, hp - d)

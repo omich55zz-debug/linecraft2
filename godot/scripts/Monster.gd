@@ -6,6 +6,7 @@ const Data := preload("res://scripts/Data.gd")
 signal died(monster)
 
 @export var kind_id: String = "wolf"
+var is_elite: bool = false
 var kind: Dictionary
 var hp: int = 35
 var max_hp: int = 35
@@ -19,9 +20,26 @@ var spawn_position: Vector3
 var hp_label: Label3D
 
 func _ready() -> void:
-    kind = Data.monster_kind(kind_id)
+    kind = Data.monster_kind(kind_id).duplicate(true)
+    if is_elite:
+        kind.name = "Альфа " + String(kind.name)
+        kind.level = max(int(kind.level) + 5, 10)
+        kind.hp = int(kind.hp) * 5
+        kind.atk = int(kind.atk) * 2
+        kind.xp = int(kind.xp) * 6
+        kind.scale = float(kind.scale) * 1.6
+        kind.color = Color(0.85, 0.30, 0.85)
+        kind.loot = [80, 160]
+        kind.drops = [
+            {"mat": "wolf_fang", "chance": 1.0},
+            {"mat": "wolf_pelt", "chance": 1.0},
+            {"mat": "bear_claw", "chance": 0.85},
+            {"mat": "iron_scrap", "chance": 0.65},
+        ]
     hp = kind.hp
     max_hp = kind.hp
+    if is_elite:
+        aggro_range = 14.0
     spawn_position = global_position
     add_to_group("monsters")
     collision_layer = 4
@@ -30,6 +48,32 @@ func _ready() -> void:
     _build_model()
     _build_collider()
     _build_hp_label()
+    if is_elite:
+        _add_elite_aura()
+
+func _add_elite_aura() -> void:
+    var aura := OmniLight3D.new()
+    aura.light_color = Color(1.0, 0.4, 1.0)
+    aura.light_energy = 1.6
+    aura.omni_range = 5.0
+    aura.position = Vector3(0, 1.2, 0)
+    add_child(aura)
+    var crown := MeshInstance3D.new()
+    var tm := TorusMesh.new()
+    tm.inner_radius = 0.50
+    tm.outer_radius = 0.65
+    crown.mesh = tm
+    var cmat := StandardMaterial3D.new()
+    cmat.albedo_color = Color(1.0, 0.9, 0.2)
+    cmat.emission_enabled = true
+    cmat.emission = Color(1.0, 0.85, 0.25)
+    cmat.emission_energy_multiplier = 2.0
+    cmat.metallic = 0.8
+    cmat.roughness = 0.25
+    crown.material_override = cmat
+    crown.position = Vector3(0, 2.4, 0)
+    crown.rotation.x = PI * 0.5
+    add_child(crown)
 
 func _build_model() -> void:
     var s: float = kind.scale

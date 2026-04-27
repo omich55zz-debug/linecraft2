@@ -36,10 +36,15 @@ func _ready() -> void:
     _build_hud()
 
 func _spawn_npcs() -> void:
+    var npcs_root := get_node_or_null("Npcs")
+    if npcs_root == null:
+        npcs_root = Node3D.new()
+        npcs_root.name = "Npcs"
+        add_child(npcs_root)
     var npc := NpcScript.new()
     npc.name = "Trader"
     npc.position = Vector3(3.5, 0, -2.5)
-    add_child(npc)
+    npcs_root.add_child(npc)
     _build_camp(Vector3(3.5, 0, -2.5))
 
 func _build_camp(center: Vector3) -> void:
@@ -144,6 +149,11 @@ func _build_move_arrow() -> void:
     add_child(move_arrow)
 
 func _spawn_monsters() -> void:
+    var monsters_root := get_node_or_null("Monsters")
+    if monsters_root == null:
+        monsters_root = Node3D.new()
+        monsters_root.name = "Monsters"
+        add_child(monsters_root)
     var rng := RandomNumberGenerator.new()
     rng.seed = 42
     for kind_id in monster_kinds:
@@ -152,20 +162,40 @@ func _spawn_monsters() -> void:
         var ang := rng.randf() * TAU
         var dist := rng.randf_range(9, 30)
         m.position = Vector3(cos(ang) * dist, 0, sin(ang) * dist)
-        add_child(m)
+        monsters_root.add_child(m)
         m.died.connect(_on_monster_died)
+    _spawn_boss()
+
+func _spawn_boss() -> void:
+    var monsters_root := get_node("Monsters")
+    var b := MonsterScript.new()
+    b.kind_id = "wolf"
+    b.is_elite = true
+    b.position = Vector3(0, 0, -42)
+    monsters_root.add_child(b)
+    b.died.connect(_on_boss_died)
+
+func _on_boss_died(_m) -> void:
+    await get_tree().create_timer(120.0).timeout
+    if not is_inside_tree(): return
+    _spawn_boss()
 
 func _on_monster_died(m) -> void:
+    if "is_elite" in m and m.is_elite:
+        return  # boss respawn handled separately
     var kind_id: String = m.kind_id
     var rng := RandomNumberGenerator.new()
     var ang := rng.randf() * TAU
     var dist := rng.randf_range(12, 30)
     var pos := Vector3(cos(ang) * dist, 0, sin(ang) * dist)
     await get_tree().create_timer(8.0).timeout
+    if not is_inside_tree(): return
+    var monsters_root := get_node_or_null("Monsters")
+    if monsters_root == null: return
     var nm := MonsterScript.new()
     nm.kind_id = kind_id
     nm.position = pos
-    add_child(nm)
+    monsters_root.add_child(nm)
     nm.died.connect(_on_monster_died)
 
 func _process(delta: float) -> void:
@@ -186,6 +216,8 @@ func _process(delta: float) -> void:
         player.use_skill_power()
     if Input.is_action_just_pressed("skill_3"):
         player.use_skill_heal()
+    if Input.is_action_just_pressed("skill_aoe"):
+        player.use_skill_aoe()
     if Input.is_action_just_pressed("sit"):
         player.toggle_sit()
     if Input.is_action_just_pressed("deselect"):
@@ -194,6 +226,8 @@ func _process(delta: float) -> void:
         if hud:
             if hud.has_method("close_craft"):
                 hud.close_craft()
+            if hud.has_method("close_sell"):
+                hud.close_sell()
             if hud.has_method("close_shop"):
                 hud.close_shop()
     if Input.is_key_pressed(KEY_4) and not _key4_held:
