@@ -30,6 +30,8 @@ var mp: int = 20
 var atk: int = 12
 var m_atk: int = 4
 var gold: int = 0
+var hp_potions: int = 0
+var mp_potions: int = 0
 var atk_cd: float = 0.0
 var gcd: float = 0.0
 var sitting: bool = false
@@ -57,6 +59,8 @@ func _ready() -> void:
         xp = int(sg.data.xp)
         xp_next = int(sg.data.xp_next)
         gold = int(sg.data.gold)
+        hp_potions = int(sg.data.get("hp_potions", 0))
+        mp_potions = int(sg.data.get("mp_potions", 0))
         for i in range(1, level):
             max_hp += 20
             max_mp += 8
@@ -232,7 +236,27 @@ func _save_progress() -> void:
     sg.data.xp = xp
     sg.data.xp_next = xp_next
     sg.data.gold = gold
+    sg.data.hp_potions = hp_potions
+    sg.data.mp_potions = mp_potions
     sg.save_data()
+
+func use_hp_potion() -> void:
+    if hp_potions <= 0 or hp >= max_hp: return
+    hp_potions -= 1
+    var heal := 60
+    hp = min(max_hp, hp + heal)
+    emit_signal("floating_text", "+%d 🧪" % heal, Color(0.6, 1.0, 0.55), global_position + Vector3(0, 2.0, 0))
+    emit_signal("stats_changed")
+    _save_progress()
+
+func use_mp_potion() -> void:
+    if mp_potions <= 0 or mp >= max_mp: return
+    mp_potions -= 1
+    var restore := 50
+    mp = min(max_mp, mp + restore)
+    emit_signal("floating_text", "+%d 💧" % restore, Color(0.5, 0.8, 1.0), global_position + Vector3(0, 2.0, 0))
+    emit_signal("stats_changed")
+    _save_progress()
 
 func _gain_xp(amount: int) -> void:
     xp += amount

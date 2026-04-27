@@ -26,6 +26,12 @@ theme_override_colors/font_color = Color(1, 0.85, 0.32, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 6
 
+[node name="PotionsLabel" type="Label" parent="Top"]
+text = "🧪 HP: 0   💧 MP: 0"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 5
+
 [node name="Bars" type="VBoxContainer" parent="Top"]
 
 [node name="HpBar" type="ProgressBar" parent="Top/Bars"]
@@ -94,31 +100,74 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -260.0
+offset_left = -390.0
 offset_top = -84.0
-offset_right = 260.0
+offset_right = 390.0
 offset_bottom = -16.0
-theme_override_constants/separation = 12
+theme_override_constants/separation = 8
 
 [node name="BtnAttack" type="Button" parent="ActionBar"]
 text = "1 ⚔"
-custom_minimum_size = Vector2(110, 64)
-theme_override_font_sizes/font_size = 20
+custom_minimum_size = Vector2(96, 64)
+theme_override_font_sizes/font_size = 18
 
 [node name="BtnPower" type="Button" parent="ActionBar"]
 text = "2 ★"
-custom_minimum_size = Vector2(110, 64)
-theme_override_font_sizes/font_size = 20
+custom_minimum_size = Vector2(96, 64)
+theme_override_font_sizes/font_size = 18
 
 [node name="BtnHeal" type="Button" parent="ActionBar"]
 text = "3 ❤"
-custom_minimum_size = Vector2(110, 64)
-theme_override_font_sizes/font_size = 20
+custom_minimum_size = Vector2(96, 64)
+theme_override_font_sizes/font_size = 18
 
 [node name="BtnSit" type="Button" parent="ActionBar"]
 text = "R ☕"
-custom_minimum_size = Vector2(110, 64)
-theme_override_font_sizes/font_size = 20
+custom_minimum_size = Vector2(96, 64)
+theme_override_font_sizes/font_size = 18
+
+[node name="BtnPotionHp" type="Button" parent="ActionBar"]
+text = "4 🧪"
+custom_minimum_size = Vector2(96, 64)
+theme_override_font_sizes/font_size = 18
+
+[node name="BtnPotionMp" type="Button" parent="ActionBar"]
+text = "5 💧"
+custom_minimum_size = Vector2(96, 64)
+theme_override_font_sizes/font_size = 18
+
+[node name="ShopPanel" type="PanelContainer" parent="."]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -160.0
+offset_right = 200.0
+offset_bottom = 160.0
+
+[node name="V" type="VBoxContainer" parent="ShopPanel"]
+
+[node name="Title" type="Label" parent="ShopPanel/V"]
+text = "Торговец Альтран"
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 1
+
+[node name="Hint" type="Label" parent="ShopPanel/V"]
+text = "Зелья восполняют HP/MP в любой момент."
+autowrap_mode = 2
+
+[node name="BuyHp" type="Button" parent="ShopPanel/V"]
+text = "Купить 🧪 HP-зелье — 25 💰  (+60 HP)"
+custom_minimum_size = Vector2(0, 48)
+
+[node name="BuyMp" type="Button" parent="ShopPanel/V"]
+text = "Купить 💧 MP-зелье — 35 💰  (+50 MP)"
+custom_minimum_size = Vector2(0, 48)
+
+[node name="Close" type="Button" parent="ShopPanel/V"]
+text = "Закрыть (Esc)"
+custom_minimum_size = Vector2(0, 36)
 
 [node name="Toast" type="Label" parent="."]
 anchor_left = 0.5

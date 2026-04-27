@@ -16,6 +16,8 @@ var player: Node = null
 @onready var target_name: Label = $TargetPanel/V/TargetName
 @onready var target_hp: ProgressBar = $TargetPanel/V/TargetHp
 @onready var toast: Label = $Toast
+@onready var shop_panel: PanelContainer = $ShopPanel
+@onready var potions_label: Label = $Top/PotionsLabel
 
 var target_ref: Node = null
 
@@ -30,13 +32,26 @@ func _ready() -> void:
         player.floating_text.connect(_on_floating_text)
     target_panel.visible = false
     toast.visible = false
+    shop_panel.visible = false
     var ab := get_node_or_null("ActionBar")
     if ab:
         ab.get_node("BtnAttack").pressed.connect(_on_btn_attack_pressed)
         ab.get_node("BtnPower").pressed.connect(_on_btn_power_pressed)
         ab.get_node("BtnHeal").pressed.connect(_on_btn_heal_pressed)
         ab.get_node("BtnSit").pressed.connect(_on_btn_sit_pressed)
+        ab.get_node("BtnPotionHp").pressed.connect(_on_btn_potion_hp)
+        ab.get_node("BtnPotionMp").pressed.connect(_on_btn_potion_mp)
+    var sp := shop_panel
+    if sp:
+        sp.get_node("V/BuyHp").pressed.connect(_on_buy_hp)
+        sp.get_node("V/BuyMp").pressed.connect(_on_buy_mp)
+        sp.get_node("V/Close").pressed.connect(close_shop)
     _refresh()
+
+const HP_POT_COST := 25
+const MP_POT_COST := 35
+const HP_POT_HEAL := 60
+const MP_POT_RESTORE := 50
 
 func _process(_delta: float) -> void:
     if target_ref != null and is_instance_valid(target_ref) and not target_ref.dead:
@@ -56,6 +71,7 @@ func _refresh() -> void:
     xp_label.text = "XP %d / %d" % [player.xp, player.xp_next]
     char_label.text = "%s · %s · ур.%d %s" % [player.race.name, player.klass.name, player.level, ("(сидит)" if player.sitting else "")]
     gold_label.text = "💰 %d" % player.gold
+    potions_label.text = "🧪 HP: %d   💧 MP: %d" % [player.hp_potions, player.mp_potions]
 
 func _on_target_changed(t) -> void:
     target_ref = t
@@ -97,3 +113,41 @@ func _on_btn_heal_pressed() -> void:
     if player: player.use_skill_heal()
 func _on_btn_sit_pressed() -> void:
     if player: player.toggle_sit()
+func _on_btn_potion_hp() -> void:
+    if player: player.use_hp_potion()
+func _on_btn_potion_mp() -> void:
+    if player: player.use_mp_potion()
+
+func open_shop() -> void:
+    shop_panel.visible = true
+
+func close_shop() -> void:
+    shop_panel.visible = false
+
+func _on_buy_hp() -> void:
+    if player == null: return
+    if player.gold < HP_POT_COST:
+        toast.text = "Не хватает золота!"
+        toast.visible = true
+        var tw := create_tween()
+        tw.tween_interval(1.0)
+        tw.tween_callback(func(): toast.visible = false)
+        return
+    player.gold -= HP_POT_COST
+    player.hp_potions += 1
+    player.emit_signal("stats_changed")
+    player._save_progress()
+
+func _on_buy_mp() -> void:
+    if player == null: return
+    if player.gold < MP_POT_COST:
+        toast.text = "Не хватает золота!"
+        toast.visible = true
+        var tw := create_tween()
+        tw.tween_interval(1.0)
+        tw.tween_callback(func(): toast.visible = false)
+        return
+    player.gold -= MP_POT_COST
+    player.mp_potions += 1
+    player.emit_signal("stats_changed")
+    player._save_progress()

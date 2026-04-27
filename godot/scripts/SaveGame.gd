@@ -10,6 +10,8 @@ var data: Dictionary = {
     "xp": 0,
     "xp_next": 100,
     "gold": 0,
+    "hp_potions": 0,
+    "mp_potions": 0,
 }
 
 func _ready() -> void:
@@ -41,5 +43,7 @@ func reset() -> void:
         "xp": 0,
         "xp_next": 100,
         "gold": 0,
+        "hp_potions": 0,
+        "mp_potions": 0,
     }
     save_data()
