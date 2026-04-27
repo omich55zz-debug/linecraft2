@@ -46,10 +46,14 @@ function startGame({ race, klass, name }) {
   // Click-to-move + click-to-target via raycast
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
-  const arrowGeom = new THREE.RingGeometry(0.25, 0.45, 16);
-  const arrowMat = new THREE.MeshBasicMaterial({ color: 0x6effa0, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
+  const arrowGeom = new THREE.RingGeometry(0.5, 0.85, 24);
+  const arrowMat = new THREE.MeshBasicMaterial({
+    color: 0x6effa0, transparent: true, opacity: 0.95, side: THREE.DoubleSide,
+    depthTest: false, depthWrite: false,
+  });
   const moveArrow = new THREE.Mesh(arrowGeom, arrowMat);
   moveArrow.rotation.x = -Math.PI / 2;
+  moveArrow.renderOrder = 999;
   moveArrow.visible = false;
   scene.add(moveArrow);
   let arrowT = 0;
@@ -85,9 +89,9 @@ function startGame({ race, klass, name }) {
       const p = groundHit[0].point;
       player.target = null;
       player.moveTarget = new THREE.Vector3(p.x, 0, p.z);
-      moveArrow.position.set(p.x, 0.05, p.z);
+      moveArrow.position.set(p.x, 0.08, p.z);
       moveArrow.visible = true;
-      arrowT = 0.6;
+      arrowT = 1.4;
     }
   });
 

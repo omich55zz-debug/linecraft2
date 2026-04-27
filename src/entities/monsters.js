@@ -169,12 +169,18 @@ export class Monster {
   }
 }
 
-export function spawnMonsters(scene, count = 8) {
+export function spawnMonsters(scene, count = 14) {
   const out = [];
   for (let i = 0; i < count; i++) {
-    const kind = MONSTERS[Math.floor(Math.random() * MONSTERS.length)];
+    // Lower-level mobs spawn closer; tougher mobs further out.
+    const tier = Math.random();
+    const kind = tier < 0.5 ? MONSTERS[0]
+      : tier < 0.8 ? MONSTERS[1]
+      : tier < 0.92 ? MONSTERS[3]
+      : tier < 0.98 ? MONSTERS[2]
+      : MONSTERS[4];
     const angle = Math.random() * Math.PI * 2;
-    const dist = 14 + Math.random() * 30;
+    const dist = 9 + Math.random() * 24;
     const m = new Monster({
       kind,
       position: new THREE.Vector3(Math.cos(angle) * dist, 0, Math.sin(angle) * dist),
