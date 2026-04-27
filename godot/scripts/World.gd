@@ -3,38 +3,71 @@ extends Node3D
 
 const TREE_COUNT := 60
 const ROCK_COUNT := 30
+const DAY_LENGTH := 180.0  # full day cycle in seconds
 
 @export var size: float = 80.0
+
+var sun_light: DirectionalLight3D
+var sky_material: ProceduralSkyMaterial
+var environment: Environment
+var time_of_day: float = 0.30  # 0..1, 0=midnight, 0.25=sunrise, 0.5=noon, 0.75=sunset
 
 func _ready() -> void:
     _build_lighting()
     _build_ground()
     _scatter_decoration()
 
+func _process(delta: float) -> void:
+    time_of_day = fmod(time_of_day + delta / DAY_LENGTH, 1.0)
+    _apply_day_night()
+
+func _apply_day_night() -> void:
+    if sun_light == null: return
+    var sun_angle: float = (time_of_day - 0.25) * TAU
+    sun_light.rotation = Vector3(-sun_angle, deg_to_rad(-35), 0)
+    var noon_factor: float = clamp(sin(time_of_day * PI), 0.0, 1.0)
+    sun_light.light_energy = lerp(0.10, 1.30, noon_factor)
+    sun_light.light_color = Color(1.0, lerp(0.65, 1.0, noon_factor), lerp(0.55, 0.95, noon_factor))
+    if sky_material:
+        var top_day := Color(0.34, 0.55, 0.78)
+        var top_night := Color(0.04, 0.05, 0.10)
+        var horiz_day := Color(0.71, 0.84, 0.91)
+        var horiz_night := Color(0.10, 0.10, 0.18)
+        var horiz_dusk := Color(0.95, 0.55, 0.32)
+        var dusk_factor: float = clamp(1.0 - abs(noon_factor - 0.0) - abs(noon_factor - 1.0), 0.0, 1.0)
+        var horiz: Color = horiz_night.lerp(horiz_day, noon_factor)
+        if noon_factor < 0.4:
+            horiz = horiz.lerp(horiz_dusk, dusk_factor * 0.5)
+        sky_material.sky_top_color = top_night.lerp(top_day, noon_factor)
+        sky_material.sky_horizon_color = horiz
+    if environment:
+        environment.ambient_light_energy = lerp(0.18, 0.65, noon_factor)
+        environment.fog_light_color = Color(0.55, 0.55, 0.65).lerp(Color(0.71, 0.81, 0.86), noon_factor)
+
 func _build_lighting() -> void:
-    var dl := DirectionalLight3D.new()
-    dl.rotation_degrees = Vector3(-50, -35, 0)
-    dl.light_energy = 1.05
-    dl.shadow_enabled = true
-    add_child(dl)
+    sun_light = DirectionalLight3D.new()
+    sun_light.rotation_degrees = Vector3(-50, -35, 0)
+    sun_light.light_energy = 1.05
+    sun_light.shadow_enabled = true
+    add_child(sun_light)
 
     var env := WorldEnvironment.new()
-    var e := Environment.new()
-    e.background_mode = Environment.BG_SKY
+    environment = Environment.new()
+    environment.background_mode = Environment.BG_SKY
     var sky := Sky.new()
-    var pm := ProceduralSkyMaterial.new()
-    pm.sky_top_color = Color(0.34, 0.55, 0.78)
-    pm.sky_horizon_color = Color(0.71, 0.84, 0.91)
-    pm.ground_bottom_color = Color(0.18, 0.21, 0.26)
-    pm.ground_horizon_color = Color(0.55, 0.62, 0.51)
-    sky.sky_material = pm
-    e.sky = sky
-    e.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-    e.ambient_light_energy = 0.6
-    e.fog_enabled = true
-    e.fog_density = 0.005
-    e.fog_light_color = Color(0.71, 0.81, 0.86)
-    env.environment = e
+    sky_material = ProceduralSkyMaterial.new()
+    sky_material.sky_top_color = Color(0.34, 0.55, 0.78)
+    sky_material.sky_horizon_color = Color(0.71, 0.84, 0.91)
+    sky_material.ground_bottom_color = Color(0.18, 0.21, 0.26)
+    sky_material.ground_horizon_color = Color(0.55, 0.62, 0.51)
+    sky.sky_material = sky_material
+    environment.sky = sky
+    environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+    environment.ambient_light_energy = 0.6
+    environment.fog_enabled = true
+    environment.fog_density = 0.005
+    environment.fog_light_color = Color(0.71, 0.81, 0.86)
+    env.environment = environment
     add_child(env)
 
 func _build_ground() -> void:
