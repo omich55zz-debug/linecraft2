@@ -106,6 +106,9 @@ func _physics_process(delta: float) -> void:
         atk_cd -= delta
 
     if target != null and is_instance_valid(target):
+        if hp_label and not hp_label.text.begins_with("❗"):
+            hp_label.text = "❗ %s ▼ %d/%d" % [kind.name, hp, max_hp]
+            hp_label.modulate = Color(1, 0.55, 0.45)
         var to_t: Vector3 = target.global_position - global_position
         to_t.y = 0
         var d := to_t.length()
@@ -121,6 +124,9 @@ func _physics_process(delta: float) -> void:
                 target.take_damage(kind.atk)
         if d > aggro_range * 2.5:
             target = null
+            if hp_label:
+                hp_label.text = "%s ▼ %d/%d" % [kind.name, hp, max_hp]
+                hp_label.modulate = Color(1, 1, 0.6)
     else:
         var to_s: Vector3 = spawn_position - global_position
         to_s.y = 0
@@ -133,7 +139,8 @@ func _physics_process(delta: float) -> void:
 func take_damage(d: int) -> void:
     if dead: return
     hp = max(0, hp - d)
-    hp_label.text = "%s ▼ %d/%d" % [kind.name, hp, max_hp]
+    var prefix := "❗ " if (target != null and is_instance_valid(target)) else ""
+    hp_label.text = "%s%s ▼ %d/%d" % [prefix, kind.name, hp, max_hp]
     if hp <= 0:
         die()
 

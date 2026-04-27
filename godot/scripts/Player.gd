@@ -160,6 +160,7 @@ func _do_basic_attack() -> void:
 func use_skill_power() -> void:
     if gcd > 0 or mp < 8 or target == null or not is_instance_valid(target) or target.dead:
         return
+    _spawn_power_flash()
     mp -= 8
     gcd = 1.5
     character_visual.trigger_attack()
@@ -193,12 +194,61 @@ func _record_quest_kill(kind_id: String) -> void:
     var q := get_node_or_null("/root/Quests")
     if q: q.record_kill(kind_id)
 
+func _spawn_heal_aura() -> void:
+    var scene := get_tree().current_scene
+    if scene == null: return
+    for i in 12:
+        var spark := MeshInstance3D.new()
+        var sm := SphereMesh.new()
+        sm.radius = 0.10
+        sm.height = 0.20
+        spark.mesh = sm
+        var mat := StandardMaterial3D.new()
+        mat.albedo_color = Color(0.55, 1.0, 0.55)
+        mat.emission_enabled = true
+        mat.emission = Color(0.5, 1.0, 0.5)
+        mat.emission_energy_multiplier = 2.4
+        mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+        spark.material_override = mat
+        var ang := i * (TAU / 12.0)
+        var r := 0.55
+        spark.position = global_position + Vector3(cos(ang) * r, 0.4, sin(ang) * r)
+        scene.add_child(spark)
+        var tw := scene.create_tween()
+        tw.tween_property(spark, "position:y", global_position.y + 2.6, 1.0).set_trans(Tween.TRANS_SINE)
+        tw.parallel().tween_property(mat, "albedo_color:a", 0.0, 1.0)
+        tw.tween_callback(spark.queue_free)
+
+func _spawn_power_flash() -> void:
+    if character_visual == null: return
+    var arm: Node3D = character_visual.arm_r
+    if arm == null: return
+    var flash := MeshInstance3D.new()
+    var sm := SphereMesh.new()
+    sm.radius = 0.55
+    sm.height = 1.0
+    flash.mesh = sm
+    var mat := StandardMaterial3D.new()
+    mat.albedo_color = Color(1.0, 0.9, 0.35, 0.7)
+    mat.emission_enabled = true
+    mat.emission = Color(1.0, 0.9, 0.4)
+    mat.emission_energy_multiplier = 3.0
+    mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+    flash.material_override = mat
+    flash.position = Vector3(0, -0.5, 0)
+    arm.add_child(flash)
+    var tw := arm.create_tween()
+    tw.tween_property(flash, "scale", Vector3(1.6, 1.6, 1.6), 0.35)
+    tw.parallel().tween_property(mat, "albedo_color:a", 0.0, 0.35)
+    tw.tween_callback(flash.queue_free)
+
 func use_skill_heal() -> void:
     if gcd > 0 or mp < 12: return
     mp -= 12
     gcd = 1.0
     var heal := 25 + randi() % 11
     hp = min(max_hp, hp + heal)
+    _spawn_heal_aura()
     emit_signal("floating_text", "+%d" % heal, Color(0.55, 1.0, 0.65), global_position + Vector3(0, 2.0, 0))
     emit_signal("stats_changed")
 
