@@ -1,0 +1,103 @@
+name: Godot Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  GODOT_VERSION: 4.4-stable
+  GODOT_BIN: Godot_v4.4-stable_linux.x86_64
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: "platforms;android-34 build-tools;34.0.0 cmdline-tools;latest"
+
+      - name: Generate debug keystore
+        run: |
+          mkdir -p ~/.android
+          keytool -genkey -v \
+            -keystore ~/.android/debug.keystore \
+            -storepass android -alias androiddebugkey \
+            -keypass android -keyalg RSA -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Cache Godot + templates
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_VERSION }}-v1
+
+      - name: Install Godot + export templates
+        run: |
+          set -e
+          mkdir -p ~/godot
+          if [ ! -x ~/godot/godot4 ]; then
+            wget -q https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/${GODOT_BIN}.zip -O /tmp/godot.zip
+            unzip -o /tmp/godot.zip -d ~/godot
+            mv ~/godot/${GODOT_BIN} ~/godot/godot4
+            chmod +x ~/godot/godot4
+          fi
+          mkdir -p ~/.local/share/godot/export_templates/${GODOT_VERSION/-stable/.stable}
+          if [ ! -f ~/.local/share/godot/export_templates/${GODOT_VERSION/-stable/.stable}/android_debug.apk ]; then
+            wget -q https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_export_templates.tpz -O /tmp/templates.tpz
+            mkdir -p /tmp/godot_tpl
+            unzip -q /tmp/templates.tpz -d /tmp/godot_tpl
+            cp -R /tmp/godot_tpl/templates/* ~/.local/share/godot/export_templates/${GODOT_VERSION/-stable/.stable}/
+          fi
+
+      - name: Configure Godot Android editor settings
+        run: |
+          mkdir -p ~/.config/godot
+          cat > ~/.config/godot/editor_settings-4.tres <<'EOF'
+          [gd_resource type="EditorSettings" format=3]
+          [resource]
+          export/android/android_sdk_path = "/usr/local/lib/android/sdk"
+          export/android/debug_keystore = "/home/runner/.android/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          export/android/force_system_user = false
+          export/android/shutdown_adb_on_exit = true
+          export/android/one_click_deploy_clear_previous_install = true
+          EOF
+
+      - name: Build APK
+        run: |
+          set -e
+          mkdir -p godot/exports/android
+          ~/godot/godot4 --headless --path godot --import || true
+          ~/godot/godot4 --headless --path godot --export-debug "Android" exports/android/linecraft2.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linecraft2-apk
+          path: godot/exports/android/linecraft2.apk
+
+      - name: Publish to Releases
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest dev build
+          files: godot/exports/android/linecraft2.apk
+          prerelease: true
+          make_latest: false
